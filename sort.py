@@ -1,83 +1,64 @@
-#!/usr/bin/env python
-# coding: utf-8
+from seleniumbase import SB
+import time
+import requests
+import sys
+import requests
+import os
+import random
+import subprocess
+from dataclasses import dataclass
+from typing import List, Optional
 
-"""
-    The approach taken is explained below. I decided to do it simply.
-    Initially I was considering parsing the data into some sort of
-    structure and then generating an appropriate README. I am still
-    considering doing it - but for now this should work. The only issue
-    I see is that it only sorts the entries at the lowest level, and that
-    the order of the top-level contents do not match the order of the actual
-    entries.
+import requests
 
-    This could be extended by having nested blocks, sorting them recursively
-    and flattening the end structure into a list of lines. Revision 2 maybe ^.^.
-"""
+def is_stream_online(username):
+    """
+    Returns True if the Twitch stream is online, False otherwise.
+    Uses the public frontend Client-ID (no OAuth).
+    """
+    url = f"https://www.twitch.tv/{username}"
+    headers = {
+        "Client-ID": "kimne78kx3ncx6brgo4mv6wki5h1ko",  # Publicly known Client-ID
+    }
+    resp = requests.get(url, headers=headers)
+    return "isLiveBroadcast" in resp.text
 
-def sort_blocks():
-    # First, we load the current README into memory
-    with open('README.md', 'r') as read_me_file:
-        read_me = read_me_file.read()
+with SB(uc=True, test=True) as sb:
 
-    # Separating the 'table of contents' from the contents (blocks)
-    table_of_contents = ''.join(read_me.split('- - -')[0])
-    blocks = ''.join(read_me.split('- - -')[1]).split('\n# ')
-    for i in range(len(blocks)):
-        if i == 0:
-            blocks[i] = blocks[i] + '\n'
-        else:
-            blocks[i] = '# ' + blocks[i] + '\n'
+    if True:
+        url = "https://kick.com/brutalles"
+        sb.uc_open_with_reconnect(url, 5)
+        sb.uc_gui_click_captcha()
+        sb.sleep(1)
+        sb.uc_gui_handle_captcha()
+        sb.sleep(1)
+        if sb.is_element_present('button:contains("Accept")'):
+            sb.uc_click('button:contains("Accept")', reconnect_time=4)
+        if sb.is_element_visible('#injected-channel-player'):
+            neur = sb.get_new_driver(undetectable=True)
+            neur.uc_open_with_reconnect(url, 5)
+            neur.uc_gui_click_captcha()
+            neur.uc_gui_handle_captcha()
+            sb.sleep(10)
+            if neur.is_element_present('button:contains("Accept")'):
+                neur.uc_click('button:contains("Accept")', reconnect_time=4)
+            while sb.is_element_visible('#injected-channel-player'):
+                sb.sleep(10)
+            sb.quit_extra_driver()
+    sb.sleep(1)
+    if is_stream_online("brutalles"):
+        url = "https://www.twitch.tv/brutalles"
+        sb.uc_open_with_reconnect(url, 5)
+        if sb.is_element_present('button:contains("Accept")'):
+            sb.uc_click('button:contains("Accept")', reconnect_time=4)
+        if True:
+            neur = sb.get_new_driver(undetectable=True)
+            neur.uc_open_with_reconnect(url, 5)
+            sb.sleep(10)
+            if neur.is_element_present('button:contains("Accept")'):
+                neur.uc_click('button:contains("Accept")', reconnect_time=4)
+            while sb.is_element_visible(input_field):
+                sb.sleep(10)
+            sb.quit_extra_driver()
+    sb.sleep(1)
 
-    # Sorting the libraries
-    inner_blocks = sorted(blocks[0].split('##'))
-    for i in range(1, len(inner_blocks)):
-        if inner_blocks[i][0] != '#':
-            inner_blocks[i] = '##' + inner_blocks[i]
-    inner_blocks = ''.join(inner_blocks)
-
-    # Replacing the non-sorted libraries by the sorted ones and gathering all at the final_README file
-    blocks[0] = inner_blocks
-    final_README = table_of_contents + '- - -' + ''.join(blocks)
-
-    with open('README.md', 'w+') as sorted_file:
-        sorted_file.write(final_README)
-
-def main():
-    # First, we load the current README into memory as an array of lines
-    with open('README.md', 'r') as read_me_file:
-        read_me = read_me_file.readlines()
-
-    # Then we cluster the lines together as blocks
-    # Each block represents a collection of lines that should be sorted
-    # This was done by assuming only links ([...](...)) are meant to be sorted
-    # Clustering is done by indentation
-    blocks = []
-    last_indent = None
-    for line in read_me:
-        s_line = line.lstrip()
-        indent = len(line) - len(s_line)
-
-        if any([s_line.startswith(s) for s in ['* [', '- [']]):
-            if indent == last_indent:
-                blocks[-1].append(line)
-            else:
-                blocks.append([line])
-            last_indent = indent
-        else:
-            blocks.append([line])
-            last_indent = None
-
-    with open('README.md', 'w+') as sorted_file:
-        # Then all of the blocks are sorted individually
-        blocks = [
-            ''.join(sorted(block, key=str.lower)) for block in blocks
-        ]
-        # And the result is written back to README.md
-        sorted_file.write(''.join(blocks))
-
-    # Then we call the sorting method
-    sort_blocks()
-
-
-if __name__ == "__main__":
-    main()
